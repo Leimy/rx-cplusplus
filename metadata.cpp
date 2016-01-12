@@ -5,6 +5,8 @@
 #include <ostream>
 #include <sstream>
 #include <string>
+#include <thread>
+#include <chrono>
 
 using boost::asio::ip::tcp;
 
@@ -41,6 +43,9 @@ public:
 	
 	
     }
+
+    ~metastream(){ socket_.close(); }
+
 private:
     void handle_resolve(const boost::system::error_code& err,
 			tcp::resolver::iterator endpoint_iterator) {
@@ -211,8 +216,6 @@ private:
 
 	s = s.substr(s.find_first_of("'")+1);
 	s = s.substr(0, s.find_last_of("'"));
-
-	
 	
 	std::clog << "Metadata: " << s << std::endl;
 							 
@@ -233,7 +236,13 @@ int main (int argc, char ** argv) {
 	usage();
     }
     boost::asio::io_service io_service;
-    metastream meta(io_service, argv[1], argv[2]);
-    io_service.run();    
+    while ( true ) {
+	metastream meta(io_service, argv[1], argv[2]);
+	io_service.run();
+	io_service.reset();
+	std::clog << "Reconnecting!" << std::endl;
+	using namespace std::literals;
+	std::this_thread::sleep_for(2s);
+    }
 }
 
