@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.4.0 FATAL_ERROR)
 project(metadata)
 find_package(boost 1.59.0 REQUIRED)
 add_executable(metadata metadata.cpp)
