@@ -38,7 +38,7 @@ constexpr bool noEscape__ (uint8_t i) {
 
 struct noEscape_ {
     bool data[256];
-    noEscape() {
+    noEscape_() {
 	for (int i = 0; i < 256; ++i) {
 	    data[i] = noEscape__(i);
 	}
@@ -57,11 +57,11 @@ std::string encode(std::string input, bool twice)
 	} else if (twice) {
 	    result += "%25";
 	    result += encodeStr[input[i] >> 4];
-	    result += ecnodeStr[input[i] & 15];
+	    result += encodeStr[input[i] & 15];
 	} else {
 	    result += "%";
 	    result += encodeStr[input[i] >> 4];
-	    result += ecnodeStr[input[i] & 15];
+	    result += encodeStr[input[i] & 15];
 	}
     }
 
