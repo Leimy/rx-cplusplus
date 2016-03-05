@@ -1,4 +1,9 @@
 * Radioxenu Bot / metadata / twitter client implementation in c++
+
+** Building
+   cd to the lua subdirectory... build as appopriate... install as appropriate.
+   cmake it up afterwards (yeah I'll make this clearer later)
+
 ** Motivation
 The Go version has been working pretty well, but it is consuming a bit more resources than necessary.
 It is adequate for now, so there is no emergency to replace it, but it's become a task to debug it
