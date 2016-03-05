@@ -30,6 +30,10 @@ in to do restarts of the system when it doesn't work.
       Very rudimentary support right now. It can hear what everyone's saying and is nearly ready to
       take commands. The command processing will be in a separate module. I will be tying in the
       configuration with the processing the bot does.
+    
+**** TODOs
+     [ ] - remove color encoding
+     [ ] - callback of what to do with each line
 
 *** Persistant Configuration restore on restart
     Totally event driven.
