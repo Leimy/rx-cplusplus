@@ -32,8 +32,8 @@ in to do restarts of the system when it doesn't work.
       configuration with the processing the bot does.
     
 **** TODOs
-     [ ] - remove color encoding
-     [ ] - callback of what to do with each line
+     1. [ ] - remove color encoding
+     2. [ ] - callback of what to do with each line
 
 *** Persistant Configuration restore on restart
     Totally event driven.
