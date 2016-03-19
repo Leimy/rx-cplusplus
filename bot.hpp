@@ -7,6 +7,7 @@
 #include <string>
 #include <thread>
 #include <chrono>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 using boost::asio::ip::tcp;
 
@@ -19,6 +20,7 @@ private:
     boost::asio::streambuf outbuf_;
     boost::asio::streambuf inbuf_;
     std::string bot_nick_;
+    boost::asio::deadline_timer timer_;
     std::string room_;
 
 public:
@@ -27,7 +29,9 @@ public:
 	: resolver_(io_service),
 	  socket_(io_service),
 	  bot_nick_(bot_nick),
+	  timer_(io_service, boost::posix_time::seconds(5)),
 	  room_(room) {
+
 	std::ostream to_server(&outbuf_);
 	to_server << "NICK " << bot_nick_ << "\r\n";
 	to_server << "USER " << bot_nick_ << " 0 * :tutorial bot\r\n";
@@ -45,15 +49,14 @@ public:
 private:
     void handle_resolve(const boost::system::error_code& err,
 			tcp::resolver::iterator endpoint_iterator) {
+
 	if (err) {
 	    std::cerr << "Failed to resolve: " << err.message() << std::endl;
 	    return;
 	}
-    
 	// Attempt a connection to the first endpoint in the list. Each endpoint
 	// will be tried until we successfully establish a connection.
-	tcp::endpoint endpoint = *endpoint_iterator;
-	socket_.async_connect(endpoint,
+	socket_.async_connect(*endpoint_iterator,
 			      [&](const boost::system::error_code& err) {
 				  handle_connect(err, ++endpoint_iterator);
 			      });
@@ -65,22 +68,25 @@ private:
 	    std::cerr << "Err: " << err.message() << std::endl;
 	    return;
 	}
-    
+
 	if (err && endpoint_iterator != tcp::resolver::iterator()) {
-	    socket_.close();
-	    tcp::endpoint endpoint = *endpoint_iterator;
-	    socket_.async_connect(endpoint,
+//	    socket_.close();
+
+	    socket_.async_connect(*endpoint_iterator,
 				  [&](const boost::system::error_code& err) {
 				      handle_connect(err, ++endpoint_iterator);
 				  });
 	    return;
 	}
+
+	timer_.async_wait([&](const boost::system::error_code& err) {
 	// The connection was successful. Send the request.
 	boost::asio::async_write(socket_, outbuf_,
 				 [&](const boost::system::error_code& err,
 				     const size_t amount) {
 				     handle_write(err, amount);
 				 });
+	    });
 	return;
     }
 
@@ -92,7 +98,11 @@ private:
 	boost::asio::async_read_until(socket_, inbuf_, "\r\n",
 				      [&](const boost::system::error_code& err,
 					  const size_t amount) {
-					  process_line(err, amount);
+					  if (amount != 0) {
+					      process_line(err, amount);
+					  }
+					  std::cerr << "no data.. bot exiting\n";
+					  return;
 				      });
 	return;
     }
