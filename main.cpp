@@ -4,8 +4,7 @@
 #include <thread>
 
 #include "metadata.hpp"
-//#include "bot.hpp"
-#include "bot2.hpp"
+#include "bot.hpp"
 
 void usage() {
   std::cerr << "Usage: meta server port ircserver nick" << std::endl;
