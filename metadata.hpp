@@ -199,7 +199,7 @@ private:
     void process_metadata() {
 	std::istream in(&response_);
 	char bytes[last_metasize_ + 1];
-	bytes[last_metasize_] = '\0';
+	bzero(bytes, last_metasize_ + 1);
 	if (!in.read(bytes, last_metasize_)) {
 	    std::cerr << "Failed to read the metadata!" << std::endl;
 	    return;	
@@ -212,6 +212,8 @@ private:
 	std::string s = bytes;
 
 	s = s.substr(s.find_first_of("'")+1);
+	s = s.substr(0, s.find_last_of("'"));
+	s = s.substr(0, s.find_last_of("'"));
 	s = s.substr(0, s.find_last_of("'"));
 	
 	std::clog << "Metadata: " << s << std::endl;

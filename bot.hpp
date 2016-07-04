@@ -1,131 +1,102 @@
-// IRC Bot
 #include <boost/asio.hpp>
-#include <iostream>
-#include <istream>
-#include <ostream>
-#include <sstream>
+#include <boost/asio/yield.hpp>
+#include <memory>
+#include <vector>
 #include <string>
-#include <thread>
-#include <chrono>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <iostream>
 
+using std::shared_ptr;
+using std::vector;
+using std::string;
 using boost::asio::ip::tcp;
+using boost::system::error_code;
 
-// Half-witted IRC bot.
+struct bot : boost::asio::coroutine {
+  shared_ptr<tcp::resolver> resolver_;
+  shared_ptr<tcp::socket> socket_;
+  string bot_nick_;
+  string room_;
+  string server_;
+  shared_ptr<boost::asio::deadline_timer> timer_;
 
-class bot {
-private:
-    tcp::resolver resolver_;
-    tcp::socket socket_;
-    boost::asio::streambuf outbuf_;
-    boost::asio::streambuf inbuf_;
-    std::string bot_nick_;
-    boost::asio::deadline_timer timer_;
-    std::string room_;
+  bot(boost::asio::io_service &io_service,
+      string server, string bot_nick, string room)
+    : resolver_(std::make_shared<tcp::resolver>(io_service)),
+      socket_(std::make_shared<tcp::socket>(io_service)),
+      bot_nick_(bot_nick),
+      room_(room),
+      server_(server),
+      timer_(std::make_shared<boost::asio::deadline_timer>(io_service, boost::posix_time::seconds(5)))
+  {
+    tcp::resolver::query query(server_, "6667");
+    resolver_->async_resolve(query,
+			    [&](error_code const &err,
+				tcp::resolver::iterator endpoint_iterator) {
 
-public:
-    bot(boost::asio::io_service& io_service,
-	std::string server, std::string bot_nick, std::string room)
-	: resolver_(io_service),
-	  socket_(io_service),
-	  bot_nick_(bot_nick),
-	  timer_(io_service, boost::posix_time::seconds(5)),
-	  room_(room) {
+			      handle_resolve(err, endpoint_iterator);
+			    });
+  }
 
-	std::ostream to_server(&outbuf_);
-	to_server << "NICK " << bot_nick_ << "\r\n";
-	to_server << "USER " << bot_nick_ << " 0 * :tutorial bot\r\n";
-	to_server << "JOIN " << room_ << "\r\n";
-	tcp::resolver::query query(server, "6667");
-	resolver_.async_resolve(query,
-				[&](const boost::system::error_code& err,
-				    tcp::resolver::iterator endpoint_iterator) {
-				    handle_resolve(err, endpoint_iterator);
-				});
+  void handle_resolve(error_code const& err, tcp::resolver::iterator endpoint_iterator) {
+    if (err) {
+      std::cerr << "Failed to resolve: " << err.message() << std::endl;
+      return;
     }
 
-    ~bot() { socket_.close(); }
+    socket_->async_connect(*endpoint_iterator,
+			   [&](error_code const &err) {
+			     handle_connect(err, ++endpoint_iterator);
+			   });
 
-private:
-    void handle_resolve(const boost::system::error_code& err,
-			tcp::resolver::iterator endpoint_iterator) {
+  }
 
-	if (err) {
-	    std::cerr << "Failed to resolve: " << err.message() << std::endl;
-	    return;
-	}
-	// Attempt a connection to the first endpoint in the list. Each endpoint
-	// will be tried until we successfully establish a connection.
-	socket_.async_connect(*endpoint_iterator,
-			      [&](const boost::system::error_code& err) {
-				  handle_connect(err, ++endpoint_iterator);
-			      });
+  void handle_connect(error_code const& err, tcp::resolver::iterator endpoint_iterator) {
+    if (err && endpoint_iterator != tcp::resolver::iterator()) {
+      socket_->async_connect(*endpoint_iterator,
+			    [&](const error_code& err) {
+			      handle_connect(err, ++endpoint_iterator);
+			    });
+      return;
+    }
+    else if (err) {
+      std::cerr << "Failed to resolve: " << err.message() << "\n";
+      return;
     }
 
-    void handle_connect(const boost::system::error_code& err,
-			tcp::resolver::iterator endpoint_iterator) {
-	if (err) {
-	    std::cerr << "Err: " << err.message() << std::endl;
-	    return;
-	}
+    timer_->async_wait([&](error_code const &ec) {
+	(*this)(ec, 0);
+      });
+  }
 
-	if (err && endpoint_iterator != tcp::resolver::iterator()) {
-//	    socket_.close();
+  void operator() (error_code const &ec = error_code(), std::size_t n = 0) {
+    static boost::asio::streambuf outbuf;
+    static boost::asio::streambuf inbuf;
 
-	    socket_.async_connect(*endpoint_iterator,
-				  [&](const boost::system::error_code& err) {
-				      handle_connect(err, ++endpoint_iterator);
-				  });
-	    return;
-	}
+    std::ostream out(&outbuf);
+    std::istream in(&inbuf);
+    std::string line;
 
-	timer_.async_wait([&](const boost::system::error_code& err) {
-	// The connection was successful. Send the request.
-	boost::asio::async_write(socket_, outbuf_,
-				 [&](const boost::system::error_code& err,
-				     const size_t amount) {
-				     handle_write(err, amount);
-				 });
-	    });
-	return;
-    }
-
-    void handle_write(const boost::system::error_code& err, const size_t amount) {
-	if (err) {
-	    std::cerr << "Err: " << err.message() << std::endl;
-	    return;
-	}
-	boost::asio::async_read_until(socket_, inbuf_, "\r\n",
-				      [&](const boost::system::error_code& err,
-					  const size_t amount) {
-					  if (amount != 0) {
-					      process_line(err, amount);
-					  }
-					  std::cerr << "no data.. bot exiting\n";
-					  return;
-				      });
-	return;
-    }
-
-    void process_line(const boost::system::error_code& err, const size_t amount) {
-	std::istream in(&inbuf_);
-	std::string line;
+    if (!ec) reenter (this) {
+	out << "NICK " << bot_nick_ << "\r\n";
+	out << "USER " << bot_nick_ << " 0 * :tutorial bot\r\n";
+	out << "JOIN " << room_ << "\r\n";
+	std::cerr << "Writing: login stuff...\n";
+	yield boost::asio::async_write(*socket_, outbuf, *this);
+      for (;;) {
+	yield boost::asio::async_read_until(*socket_, inbuf, "\r\n", *this);
 	getline(in, line);
 	if (line.substr(0,6) == "PING :") {
-	    std::cerr << "Got a PING\n";
-	    std::ostream out(&outbuf_);
-	    out << line.replace(0, 4, "PONG") << "\r\n";
-	    boost::asio::async_write(socket_, outbuf_,
-				     [&](const boost::system::error_code& err,
-					  const size_t amount) {
-					 handle_write(err, amount);
-				     });
+	  std::cerr << "Got a PING\n";
+	  out << line.replace(0, 4, "PONG") << "\r\n";
+	  std::cerr << "PONGING!\n";
+	  yield boost::asio::async_write(*socket_, outbuf, *this);
 	}
-	std::cerr << "From IRC: " << line << std::endl;
-	boost::asio::async_read_until(socket_, inbuf_, "\r\n",
-				      [&](const boost::system::error_code& err,
-					  const size_t amount) {
-					  process_line(err, amount);
-				      });
+	std::cerr << "<IRC>  " << line << std::endl;
+      }
     }
+    else {
+      std::cerr << "Shit, got an error!(" << ec.message() << ")\n";
+      return;
+    }
+  }
 };
