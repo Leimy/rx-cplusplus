@@ -38,8 +38,6 @@ public:
 				    tcp::resolver::iterator endpoint_iterator) {
 				    handle_resolve(err, endpoint_iterator);
 				});
-	
-	
     }
 
     ~metastream(){ socket_.close(); }
@@ -60,6 +58,7 @@ private:
 				  handle_connect(err, ++endpoint_iterator);
 			      });
     }
+
     void handle_connect(const boost::system::error_code& err,
 			tcp::resolver::iterator endpoint_iterator) {
 	if (err) {
@@ -68,9 +67,7 @@ private:
 	}
 
 	if (err && endpoint_iterator != tcp::resolver::iterator()) {
-	    socket_.close();
-	    tcp::endpoint endpoint = *endpoint_iterator;
-	    socket_.async_connect(endpoint,
+	    socket_.async_connect(*endpoint_iterator,
 				  [&](const boost::system::error_code& err) {
 				      handle_connect(err, ++endpoint_iterator);
 				  });
@@ -172,7 +169,7 @@ private:
 				    });
 	    return;
 	}
-//	std::clog << "Last_metasize: " << last_metasize_ << std::endl;
+
 	if (response_.size() >= last_metasize_) {
 	    // can process metadata immediately... so do it
 	    process_metadata();
@@ -185,7 +182,6 @@ private:
 				});
 	return;
     }
-
 
     void handle_read_metadata(const boost::system::error_code& err, const size_t amount) {
 	if (err) {
