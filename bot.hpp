@@ -1,12 +1,9 @@
 #include <boost/asio.hpp>
 #include <boost/asio/yield.hpp>
 #include <memory>
-#include <vector>
 #include <string>
 #include <iostream>
 
-using std::shared_ptr;
-using std::vector;
 using std::string;
 using boost::asio::ip::tcp;
 using boost::system::error_code;
@@ -70,7 +67,6 @@ struct bot : boost::asio::coroutine {
 
   void operator() (error_code const &ec = error_code(), std::size_t n = 0) {
     auto continuation = [&](error_code const &ec, std::size_t n){(*this)(ec,n);};
-
     std::ostream out(&outbuf_);
     std::istream in(&inbuf_);
     std::string line;
@@ -88,7 +84,9 @@ struct bot : boost::asio::coroutine {
 	  out << line.replace(0, 4, "PONG") << "\r\n";
 	  yield boost::asio::async_write(socket_, outbuf_, continuation);
 	}
-	std::cerr << "<IRC> " << line << std::endl;
+	else {
+	  std::cerr << "<IRC> " << line << std::endl;
+	}
       }
     }
     else {
