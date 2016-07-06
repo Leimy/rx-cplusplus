@@ -48,7 +48,6 @@ struct bot : boost::asio::coroutine {
 			   [&](error_code const &err) {
 			     handle_connect(err, ++endpoint_iterator);
 			   });
-
   }
 
   void handle_connect(error_code const& err, tcp::resolver::iterator endpoint_iterator) {
