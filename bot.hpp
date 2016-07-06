@@ -18,7 +18,9 @@ struct bot : boost::asio::coroutine {
   string room_;
   string server_;
   boost::asio::deadline_timer timer_;
-
+  boost::asio::streambuf outbuf;
+  boost::asio::streambuf inbuf;
+  
   bot(boost::asio::io_service &io_service,
       string server, string bot_nick, string room)
     : resolver_(io_service),
@@ -68,9 +70,6 @@ struct bot : boost::asio::coroutine {
   }
 
   void operator() (error_code const &ec = error_code(), std::size_t n = 0) {
-    static boost::asio::streambuf outbuf;
-    static boost::asio::streambuf inbuf;
-
     auto continuation = [&](error_code const &ec, std::size_t n){(*this)(ec,n);};
 
     std::ostream out(&outbuf);
