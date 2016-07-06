@@ -92,7 +92,7 @@ struct bot : boost::asio::coroutine {
       }
     }
     else {
-      std::cerr << "Shit, got an error!(" << ec.message() << ")\n";
+      std::cerr << "Got an error!(" << ec.message() << ")\n";
       return;
     }
   }
