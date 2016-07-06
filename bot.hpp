@@ -1,6 +1,5 @@
 #include <boost/asio.hpp>
 #include <boost/asio/yield.hpp>
-#include <memory>
 #include <string>
 #include <iostream>
 
