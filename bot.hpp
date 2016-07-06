@@ -18,8 +18,8 @@ struct bot : boost::asio::coroutine {
   string room_;
   string server_;
   boost::asio::deadline_timer timer_;
-  boost::asio::streambuf outbuf;
-  boost::asio::streambuf inbuf;
+  boost::asio::streambuf outbuf_;
+  boost::asio::streambuf inbuf_;
   
   bot(boost::asio::io_service &io_service,
       string server, string bot_nick, string room)
@@ -71,8 +71,8 @@ struct bot : boost::asio::coroutine {
   void operator() (error_code const &ec = error_code(), std::size_t n = 0) {
     auto continuation = [&](error_code const &ec, std::size_t n){(*this)(ec,n);};
 
-    std::ostream out(&outbuf);
-    std::istream in(&inbuf);
+    std::ostream out(&outbuf_);
+    std::istream in(&inbuf_);
     std::string line;
 
     if (!ec) reenter (this) {
@@ -80,13 +80,13 @@ struct bot : boost::asio::coroutine {
 	out << "USER " << bot_nick_ << " 0 * :tutorial bot\r\n";
 	out << "JOIN " << room_ << "\r\n";
 	std::cerr << "Writing: login stuff...\n";
-	yield boost::asio::async_write(socket_, outbuf, continuation);
+	yield boost::asio::async_write(socket_, outbuf_, continuation);
       for (;;) {
-	yield boost::asio::async_read_until(socket_, inbuf, "\r\n", continuation);
+	yield boost::asio::async_read_until(socket_, inbuf_, "\r\n", continuation);
 	getline(in, line);
 	if (line.substr(0, 6) == "PING :") {
 	  out << line.replace(0, 4, "PONG") << "\r\n";
-	  yield boost::asio::async_write(socket_, outbuf, continuation);
+	  yield boost::asio::async_write(socket_, outbuf_, continuation);
 	}
 	std::cerr << "<IRC> " << line << std::endl;
       }
