@@ -16,6 +16,7 @@ int main (int argc, char ** argv) {
     usage();
   }
 
+  try {
   while ( true ) {
     boost::asio::io_service io_service;
     metastream meta(io_service, argv[1], argv[2]);
@@ -24,5 +25,10 @@ int main (int argc, char ** argv) {
     std::clog << "Reconnecting!" << std::endl;
     using namespace std::literals;
     std::this_thread::sleep_for(2s);
+  }
+  }
+  catch (char const * w) {
+    std::cerr << "Dangit: " << w << std::endl;
+    return -1;
   }
 }
