@@ -68,19 +68,14 @@ struct bot : boost::asio::coroutine {
     ls_ = luaL_newstate();
     luaL_openlibs(ls_);
     luaL_loadfile(ls_, lua_script.c_str());
-    std::cerr << ls_ << std::endl;
     lua_pcall(ls_, 0, 0, 0);  // load it up!
-    std::cerr << ls_ << std::endl;
-
     lua_getglobal(ls_, "parameters"); // tell it where we is!
     lua_pushstring(ls_, "channel");
     lua_pushstring(ls_, room.c_str());
     std::cerr << "Configuring lua...\n";
-    std::cerr << ls_ << std::endl;
     lua_settable(ls_, -3);
-    std::cerr << ls_ << std::endl;
     lua_pop(ls_, 1);
-    std::cerr << ls_ << std::endl;
+    // Lua is now configured...
 
     tcp::resolver::query query(server_, "6667");
     resolver_.async_resolve(query,

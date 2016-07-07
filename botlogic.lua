@@ -1,6 +1,6 @@
 parameters = {
    nick    = "luabot",
-   channel = "#radioxenu"
+   channel = ""
 }
 
 function fromirc (line)
@@ -15,4 +15,3 @@ function fromirc (line)
    end
    return "", false
 end
-
