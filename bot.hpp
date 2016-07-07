@@ -69,7 +69,17 @@ struct bot : boost::asio::coroutine {
     luaL_openlibs(ls_);
     luaL_loadfile(ls_, lua_script.c_str());
     std::cerr << ls_ << std::endl;
-    lua_pcall(ls_, 0, 0, 0);
+    lua_pcall(ls_, 0, 0, 0);  // load it up!
+    std::cerr << ls_ << std::endl;
+
+    lua_getglobal(ls_, "parameters"); // tell it where we is!
+    lua_pushstring(ls_, "channel");
+    lua_pushstring(ls_, room.c_str());
+    std::cerr << "Configuring lua...\n";
+    std::cerr << ls_ << std::endl;
+    lua_settable(ls_, -3);
+    std::cerr << ls_ << std::endl;
+    lua_pop(ls_, 1);
     std::cerr << ls_ << std::endl;
 
     tcp::resolver::query query(server_, "6667");
@@ -138,7 +148,7 @@ struct bot : boost::asio::coroutine {
 	}
 	if (lua_toboolean(ls_, -1)) {
 	  std::cerr << "Sending back: " << lua_tostring(ls_, -2) << std::endl;
-	  out << lua_tostring(ls_, -2);
+	  out << lua_tostring(ls_, -2) << "\r\n";
 	  yield boost::asio::async_write(socket_, outbuf_, continuation);
 	}
 	lua_pop(ls_, 2);
