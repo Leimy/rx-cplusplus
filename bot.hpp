@@ -62,7 +62,7 @@ struct bot : boost::asio::coroutine {
       bot_nick_(bot_nick),
       room_(room),
       server_(server),
-      timer_(io_service, boost::posix_time::seconds(5))
+      timer_(io_service, boost::posix_time::seconds(1))
   {
     // TODO: errors
     ls_ = luaL_newstate();
@@ -131,24 +131,54 @@ struct bot : boost::asio::coroutine {
 	yield boost::asio::async_read_until(socket_, inbuf_, "\r\n", continuation);
 	// We process all the IRC lines via our lua configuration file.
 	getline(in, line);
+
+	// Call lua's entry
 	lua_getglobal(ls_, "fromirc");
+	// with the argument
 	lua_pushlstring(ls_, line.c_str(), line.size());
+	// expecting bool, <result>
 	if (lua_pcall(ls_, 1, 2, 0) != LUA_OK) { // One argument in, two out!
 	  std::cerr << "ERROR:\nLSTACK: " << ls_ << "\n";
 	  throw "lua call failed";
 	}
+	// Sanity
 	if (!lua_isboolean(ls_, -1)) {
 	  std::cerr << "ERROR:\nLSTACK: " << ls_ << "\n";
 	  throw "lua: unexpected result";
 	}
+	// Check success
 	if (lua_toboolean(ls_, -1)) {
-	  std::cerr << "Sending back: " << lua_tostring(ls_, -2) << std::endl;
-	  out << lua_tostring(ls_, -2) << "\r\n";
-	  yield boost::asio::async_write(socket_, outbuf_, continuation);
+	  lua_pop(ls_, 1); // cleanup bool, we're done with it
+	  // Multi-line response from lua is in a table of strings
+	  if (lua_istable(ls_, -1)) {
+	    // stack is just -1 = table
+	    lua_pushnil(ls_);
+	    // stack is  now -1 = nil, -2 = table
+	    while (lua_next(ls_, -2) != 0) {
+	      // stack is now -1 = value, -2 = key, -3 = table
+	      out << lua_tostring(ls_, -1) << "\r\n";
+	      yield boost::asio::async_write(socket_, outbuf_, continuation);
+	      lua_pop(ls_, 1);
+	      // stack is now  -1 = key, -2 = table
+	      timer_.expires_from_now(boost::posix_time::seconds(1));
+	      timer_.wait();
+	    }
+	    // stack is now -1 = key, -2 = table
+	    lua_pop(ls_, 1);
+	  }
+	  // Single line response is just a string
+	  else if (lua_isstring(ls_, -1)) {
+	    out << lua_tostring(ls_, -1) << "\r\n";
+	    yield boost::asio::async_write(socket_, outbuf_, continuation);
+	    lua_pop(ls_, 1);  // cleanup the string
+	  }
 	}
-	lua_pop(ls_, 2);
+	else {
+	  lua_pop(ls_, 2);
+	}
       }
     }
+    // ASIO errors
     else {
       std::cerr << "Got an error!(" << ec.message() << ")\n";
       return;
