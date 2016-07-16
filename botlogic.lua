@@ -73,6 +73,10 @@ function nukeReqs ()
    return toChannel("Got it, the list, it is no more!!!"), true
 end
 
+function getLast ()
+   return toChannel(md.getMetaData()), true
+end
+
 function fromirc (line)
    -- Handle PING
    pongres, wasping = line:gsub("PING :", "PONG :")
@@ -96,6 +100,9 @@ function fromirc (line)
    -- blow away the requesticles
    if line:match("?nukereqs?") then
       return nukeReqs()
+   end
+   if line:match("?lastsong?") then
+      return getLast()
    end
    return nil, false
 end

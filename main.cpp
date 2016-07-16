@@ -5,6 +5,8 @@
 
 #include "metadata.hpp"
 #include "bot.hpp"
+#include "metastate.hpp"
+
 
 void usage() {
   std::cerr << "Usage: meta server port ircserver nick" << std::endl;
@@ -15,7 +17,7 @@ int main (int argc, char ** argv) {
   if (argc < 5) {
     usage();
   }
-
+  
   try {
   while ( true ) {
     boost::asio::io_service io_service;

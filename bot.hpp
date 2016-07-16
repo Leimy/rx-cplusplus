@@ -1,43 +1,19 @@
+#ifndef __BOT_HPP__
+#define __BOT_HPP__
 #include <boost/asio.hpp>
 #include <boost/asio/yield.hpp>
 #include <string>
 #include <iostream>
 
 #include "lua.hpp"
+#include "metastate.hpp"
+#include "metalua.hpp"
 
 using std::string;
 using boost::asio::ip::tcp;
 using boost::system::error_code;
 
-std::ostream & operator << (std::ostream& os, lua_State *L)
-{
-  int i;
-  int top = lua_gettop(L);  /* depth of the stack */
-  for (i = 1; i <= top; i++) {  /* repeat for each level */
-    int t = lua_type(L, i);
-    switch (t) {
-    case LUA_TSTRING: {  /* strings */
-      os << lua_tostring(L, i);
-      break;
-    }
-    case LUA_TBOOLEAN: {  /* booleans */
-      os << (lua_toboolean(L, i) ? "true" : "false");
-      break;
-    }
-    case LUA_TNUMBER: {  /* numbers */
-      os << lua_tonumber(L, i);
-      break;
-    }
-    default: {  /* other values */
-      os << lua_typename(L, t);
-      break;
-    }
-    }
-    os << "  ";  /* put a separator */
-  }
-  os << "\n";  /* end the listing */
-  return os;
-}
+std::ostream & operator << (std::ostream& os, lua_State *L);
 
 struct bot : boost::asio::coroutine {
   tcp::resolver resolver_;
@@ -50,138 +26,16 @@ struct bot : boost::asio::coroutine {
   boost::asio::streambuf inbuf_;
   lua_State *ls_;
 
-  virtual ~bot () {
-    lua_close(ls_);
-  }
+  virtual ~bot ();
 
   bot(boost::asio::io_service &io_service,
       string server, string bot_nick, string room,
-      string lua_script = "./botlogic.lua")
-    : resolver_(io_service),
-      socket_(io_service),
-      bot_nick_(bot_nick),
-      room_(room),
-      server_(server),
-      timer_(io_service, boost::posix_time::seconds(1))
-  {
-    // TODO: errors
-    ls_ = luaL_newstate();
-    luaL_openlibs(ls_);
-    luaL_loadfile(ls_, lua_script.c_str());
-    lua_pcall(ls_, 0, 0, 0);  // load it up!
-    lua_getglobal(ls_, "parameters"); // tell it where we is!
-    lua_pushstring(ls_, "channel");
-    lua_pushstring(ls_, room.c_str());
-    std::cerr << "Configuring lua...\n";
-    lua_settable(ls_, -3);
-    lua_pop(ls_, 1);
-    // Lua is now configured...
+      string lua_script = "./botlogic.lua");
 
-    tcp::resolver::query query(server_, "6667");
-    resolver_.async_resolve(query,
-			    [&](error_code const &err,
-				tcp::resolver::iterator endpoint_iterator) {
-			      handle_resolve(err, endpoint_iterator);
-			    });
-  }
+  void handle_resolve(error_code const& err, tcp::resolver::iterator endpoint_iterator);
+  
+  void handle_connect(error_code const& err, tcp::resolver::iterator endpoint_iterator);
 
-  void handle_resolve(error_code const& err, tcp::resolver::iterator endpoint_iterator) {
-    if (err) {
-      std::cerr << "Failed to resolve: " << err.message() << std::endl;
-      return;
-    }
-
-    socket_.async_connect(*endpoint_iterator,
-			   [&](error_code const &err) {
-			     handle_connect(err, ++endpoint_iterator);
-			   });
-  }
-
-  void handle_connect(error_code const& err, tcp::resolver::iterator endpoint_iterator) {
-    if (err && endpoint_iterator != tcp::resolver::iterator()) {
-      socket_.async_connect(*endpoint_iterator,
-			    [&](error_code const& err) {
-			      handle_connect(err, ++endpoint_iterator);
-			    });
-      return;
-    }
-    else if (err) {
-      std::cerr << "Failed to resolve: " << err.message() << "\n";
-      return;
-    }
-
-    timer_.async_wait([&](error_code const &ec) {
-	(*this)(ec, 0);
-      });
-  }
-
-  void operator() (error_code const &ec = error_code(), std::size_t n = 0) {
-    auto continuation = [&](error_code const &ec, std::size_t n){(*this)(ec,n);};
-    std::ostream out(&outbuf_);
-    std::istream in(&inbuf_);
-    std::string line;
-
-    if (!ec) reenter (this) {
-	out << "NICK " << bot_nick_ << "\r\n";
-	out << "USER " << bot_nick_ << " 0 * :tutorial bot\r\n";
-	out << "JOIN " << room_ << "\r\n";
-	std::cerr << "Writing: login stuff...\n";
-	yield boost::asio::async_write(socket_, outbuf_, continuation);
-      for (;;) {
-	yield boost::asio::async_read_until(socket_, inbuf_, "\r\n", continuation);
-	// We process all the IRC lines via our lua configuration file.
-	getline(in, line);
-
-	// Call lua's entry
-	lua_getglobal(ls_, "fromirc");
-	// with the argument
-	lua_pushlstring(ls_, line.c_str(), line.size());
-	// expecting bool, <result>
-	if (lua_pcall(ls_, 1, 2, 0) != LUA_OK) { // One argument in, two out!
-	  std::cerr << "ERROR:\nLSTACK: " << ls_ << "\n";
-	  throw "lua call failed";
-	}
-	// Sanity
-	if (!lua_isboolean(ls_, -1)) {
-	  std::cerr << "ERROR:\nLSTACK: " << ls_ << "\n";
-	  throw "lua: unexpected result";
-	}
-	// Check success
-	if (lua_toboolean(ls_, -1)) {
-	  lua_pop(ls_, 1); // cleanup bool, we're done with it
-	  // Multi-line response from lua is in a table of strings
-	  if (lua_istable(ls_, -1)) {
-	    // stack is just -1 = table
-	    lua_pushnil(ls_);
-	    // stack is  now -1 = nil, -2 = table
-	    while (lua_next(ls_, -2) != 0) {
-	      // stack is now -1 = value, -2 = key, -3 = table
-	      out << lua_tostring(ls_, -1) << "\r\n";
-	      yield boost::asio::async_write(socket_, outbuf_, continuation);
-	      lua_pop(ls_, 1);
-	      // stack is now  -1 = key, -2 = table
-	      timer_.expires_from_now(boost::posix_time::seconds(1));
-	      timer_.wait();
-	    }
-	    // stack is now -1 = key, -2 = table
-	    lua_pop(ls_, 1);
-	  }
-	  // Single line response is just a string
-	  else if (lua_isstring(ls_, -1)) {
-	    out << lua_tostring(ls_, -1) << "\r\n";
-	    yield boost::asio::async_write(socket_, outbuf_, continuation);
-	    lua_pop(ls_, 1);  // cleanup the string
-	  }
-	}
-	else {
-	  lua_pop(ls_, 2);
-	}
-      }
-    }
-    // ASIO errors
-    else {
-      std::cerr << "Got an error!(" << ec.message() << ")\n";
-      return;
-    }
-  }
+  void operator() (error_code const &ec = error_code(), std::size_t n = 0);
 };
+#endif // __BOT_HPP__
