@@ -3,7 +3,7 @@
 #include "lua.hpp"
 
 extern "C" {
-extern "C" char *getMetaData();
+char *getMetaData();
 
 LUALIB_API int luaopen_libmetalua (lua_State *L);
 }
