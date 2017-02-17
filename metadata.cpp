@@ -173,7 +173,7 @@ void metastream::handle_read_metadata(const boost::system::error_code& err, cons
 void metastream::process_metadata() {
   std::istream in(&response_);
   char bytes[last_metasize_ + 1];
-  bzero(bytes, last_metasize_ + 1);
+  bytes[last_metasize_] = '\0';
   if (!in.read(bytes, last_metasize_)) {
     std::cerr << "Failed to read the metadata!" << std::endl;
     return;
@@ -185,13 +185,34 @@ void metastream::process_metadata() {
 
   std::string s = bytes;
 
+  // Metadata parsing - move to another function
+  // Consider string views in 2017 - should be much
+  // cheaper!
   s = s.substr(s.find_first_of("'")+1);
-  s = s.substr(0, s.find_last_of("'"));
-  s = s.substr(0, s.find_last_of("'"));
-  s = s.substr(0, s.find_last_of("'"));
+
+  typedef enum {START, NEXT} parserState;
+  parserState state = START;
+  bool done =false;
+  std::string::size_type pos = 0;
+  for (pos = 0; !done && pos < s.size(); ++pos) {
+    switch (state) {
+    case START:
+      if (s[pos] == '\'') {
+	state = NEXT;
+      }
+      break;
+    case NEXT:
+      if (s[pos] == ';') {
+	pos -= 2; //back up for trim
+	done = true;
+      } else {
+	state = START;
+      }
+    }
+  }
+  s = s.substr(0, pos);
 
   std::clog << "Metadata: " << s << std::endl;
-  g_ms.set(s);
 
   boost::asio::async_read(socket_, response_, boost::asio::transfer_at_least((metaint_ + 1) - response_.size()),
 			  [&](const boost::system::error_code& err, const size_t amount) {
