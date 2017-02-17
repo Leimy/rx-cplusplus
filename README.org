@@ -17,28 +17,26 @@ in to do restarts of the system when it doesn't work.
 
 ** Requirements
 
-   1. [ ] Twitter support
+   1. [ ] Twitter support - maybe via an external program (Lua and C++ twitter clients are hard to come by. Could write one, but yuck)
    2. [X] Metadata stream capture
-   3. [ ] IRC bot
-   4. [ ] Persistant Configuration restore on restart
+   3. [?] IRC bot - coming with Lua support for processing commands
+   4. [ ] Persistant Configuration restore on restart - if configuration is in Lua, we can generate it, store values in tables and serialize it
+
+** Nice feature ideas?
+   1. [ ] Write a persistent, queryable selection of the last 10 requests from the chat. DJs track what they've played!
 
 *** Twitter
     Unless I can find a good oauth/twitter client for C++ I may just fork
     out to Go to tweet from the rx-go repository. It's basically a duct tape
-    solution, but it would accelerate the delivery of this software greatly
-    (and it's not really that bad)
+    solution, but it would accelerate the delivery of this software greatly.
+    Kind of gross, as it burns more megabytes than I want of private memory space.
 
 *** Metadata stream status
+    it's working, just need to expose it to Lua
 
 *** IRC Bot
-      Very rudimentary support right now. It can hear what everyone's saying and is nearly ready to
-      take commands. The command processing will be in a separate module. I will be tying in the
-      configuration with the processing the bot does.
+    Pinging/Ponging is controlled by Lua! And as I get better with Lua, I'm going to add more features! 
     
-**** TODOs
-     1. [ ] - remove color encoding
-     2. [ ] - callback
-
 *** Persistant Configuration restore on restart
     Totally event driven.
     
