@@ -211,8 +211,32 @@ private:
 
 	std::string s = bytes;
 
+	// Metadata parsing - move to another function
+	// Consider string views in 2017 - should be much
+	// cheaper!
 	s = s.substr(s.find_first_of("'")+1);
-	s = s.substr(0, s.find_last_of("'"));
+
+	typedef enum {START, NEXT} parserState;
+	parserState state = START;
+	bool done =false;
+	std::string::size_type pos = 0;
+	for (pos = 0; !done && pos < s.size(); ++pos) {
+	  switch (state) {
+	  case START:
+	    if (s[pos] == '\'') {
+	      state = NEXT;
+	    }
+	    break;
+	  case NEXT:
+	    if (s[pos] == ';') {
+	      pos -= 2; //back up for trim
+	      done = true;
+	    } else {
+	      state = START;
+	    }
+	  }
+	}
+	s = s.substr(0, pos);
 	
 	std::clog << "Metadata: " << s << std::endl;
 							 

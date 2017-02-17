@@ -17,8 +17,7 @@ int main (int argc, char ** argv) {
     }
     boost::asio::io_service io_service;
 
-    while ( true ) {
-
+    while (true) {
 	metastream meta(io_service, argv[1], argv[2]);
 	bot bot(io_service, argv[3], argv[4], "#radioxenu");
 	io_service.run();
