@@ -1,4 +1,5 @@
 #include "metadata.hpp"
+#include "metastate.hpp"
 
 metastream::metastream(boost::asio::io_service& io_service,
 	   std::string server, std::string port)
@@ -211,7 +212,7 @@ void metastream::process_metadata() {
     }
   }
   s = s.substr(0, pos);
-
+  g_ms.set(s);
   std::clog << "Metadata: " << s << std::endl;
 
   boost::asio::async_read(socket_, response_, boost::asio::transfer_at_least((metaint_ + 1) - response_.size()),
