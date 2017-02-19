@@ -42,7 +42,8 @@ bot::bot(boost::asio::io_service &io_service,
     bot_nick_(bot_nick),
     room_(room),
     server_(server),
-    timer_(io_service, boost::posix_time::seconds(1))
+    timer_(io_service, boost::posix_time::seconds(1)),
+    strand_(io_service)
 {
   // TODO: errors
   ls_ = luaL_newstate();
@@ -61,11 +62,13 @@ bot::bot(boost::asio::io_service &io_service,
   // Lua is now configured...
 
   tcp::resolver::query query(server_, "6667");
+  strand_.post([&](){
   resolver_.async_resolve(query,
 			  [&](error_code const &err,
 			      tcp::resolver::iterator endpoint_iterator) {
 			    handle_resolve(err, endpoint_iterator);
 			  });
+  });
 }
 
 void bot::handle_resolve(error_code const& err, tcp::resolver::iterator endpoint_iterator) {
@@ -73,19 +76,22 @@ void bot::handle_resolve(error_code const& err, tcp::resolver::iterator endpoint
     std::cerr << "Failed to resolve: " << err.message() << std::endl;
     return;
   }
-
+  strand_.post([&](){
   socket_.async_connect(*endpoint_iterator,
 			[&](error_code const &err) {
 			  handle_connect(err, ++endpoint_iterator);
 			});
+  });
 }
 
 void bot::handle_connect(error_code const& err, tcp::resolver::iterator endpoint_iterator) {
   if (err && endpoint_iterator != tcp::resolver::iterator()) {
+  strand_.post([&]{
     socket_.async_connect(*endpoint_iterator,
 			  [&](error_code const& err) {
 			    handle_connect(err, ++endpoint_iterator);
 			  });
+	});
     return;
   }
   else if (err) {
@@ -94,12 +100,16 @@ void bot::handle_connect(error_code const& err, tcp::resolver::iterator endpoint
   }
 
   timer_.async_wait([&](error_code const &ec) {
-      (*this)(ec, 0);
+      strand_.post([&]{
+          (*this)(ec, 0);
+      });
     });
 }
 
 void bot::operator() (error_code const &ec, std::size_t n) {
-  auto continuation = [&](error_code const &ec, std::size_t n){(*this)(ec,n);};
+  auto continuation = [&](error_code const &ec, std::size_t n){
+      strand_.post([&](){(*this)(ec,n);});
+  };
   std::ostream out(&outbuf_);
   std::istream in(&inbuf_);
   std::string line;

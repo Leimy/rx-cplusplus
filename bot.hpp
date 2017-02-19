@@ -12,6 +12,7 @@
 using std::string;
 using boost::asio::ip::tcp;
 using boost::system::error_code;
+using boost::asio::strand;
 
 std::ostream & operator << (std::ostream& os, lua_State *L);
 
@@ -25,6 +26,7 @@ struct bot : boost::asio::coroutine {
   boost::asio::streambuf outbuf_;
   boost::asio::streambuf inbuf_;
   lua_State *ls_;
+  strand strand_;
 
   virtual ~bot ();
 
