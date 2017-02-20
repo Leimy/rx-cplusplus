@@ -31,6 +31,7 @@ std::ostream & operator << (std::ostream& os, lua_State *L)
 }
 
 bot::~bot () {
+  g_ms.removeHandler(bot_nick_);
   lua_close(ls_);
 }
 
@@ -60,6 +61,10 @@ bot::bot(boost::asio::io_service &io_service,
   lua_settable(ls_, -3);
   lua_pop(ls_, 1);
   // Lua is now configured...
+
+  // register our bot handler with the metastate
+  g_ms.registerHandler(bot_nick_, [&](std::string s) { onUpdateMetadata(s); });
+
 
   tcp::resolver::query query(server_, "6667");
   resolver_.async_resolve(query,

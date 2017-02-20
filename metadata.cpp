@@ -2,10 +2,9 @@
 #include "metastate.hpp"
 
 metastream::metastream(boost::asio::io_service& io_service,
-		       std::string server, std::string port, bot &bot)
+		       std::string server, std::string port)
   : resolver_(io_service),
-    socket_(io_service),
-    bot_(bot)
+    socket_(io_service)
 {
   std::ostream req_stream(&request_);
   req_stream << "GET /relay HTTP/1.0\r\n";
@@ -214,8 +213,6 @@ void metastream::process_metadata() {
   }
   s = s.substr(0, pos);
   g_ms.set(s);
-  bot_.onUpdateMetadata(s);
-
   std::clog << "Metadata: " << s << std::endl;
 
   boost::asio::async_read(socket_, response_, boost::asio::transfer_at_least((metaint_ + 1) - response_.size()),

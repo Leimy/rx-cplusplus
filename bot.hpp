@@ -35,7 +35,7 @@ struct bot : boost::asio::coroutine {
       string lua_script = "./botlogic.lua");
 
   void handle_resolve(error_code const& err, tcp::resolver::iterator endpoint_iterator);
-  
+
   void handle_connect(error_code const& err, tcp::resolver::iterator endpoint_iterator);
 
   void operator() (error_code const &ec = error_code(), std::size_t n = 0);
