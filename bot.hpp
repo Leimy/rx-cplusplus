@@ -39,5 +39,7 @@ struct bot : boost::asio::coroutine {
   void handle_connect(error_code const& err, tcp::resolver::iterator endpoint_iterator);
 
   void operator() (error_code const &ec = error_code(), std::size_t n = 0);
+
+  void onUpdateMetadata(std::string md);
 };
 #endif // __BOT_HPP__

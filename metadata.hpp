@@ -5,6 +5,7 @@
 #include <ostream>
 #include <sstream>
 #include <string>
+#include "bot.hpp"
 
 using boost::asio::ip::tcp;
 
@@ -21,9 +22,10 @@ private:
     boost::asio::streambuf response_;
     size_t metaint_;
     size_t last_metasize_;
+    bot &bot_; // should be a shared_ptr this will break
 public:
   metastream(boost::asio::io_service& io_service,
-	     std::string server, std::string port);
+	     std::string server, std::string port, bot &bot);
   ~metastream();
 
 private:

@@ -1,5 +1,6 @@
 parameters = {
    nick    = "luabot",
+   autolast = false,
    channel = "",
    reqs = {},
    reqnext = 1,
@@ -73,8 +74,24 @@ function nukeReqs ()
    return toChannel("Got it, the list, it is no more!!!"), true
 end
 
+function toggleAutoLast ()
+   parameters.autolast = not parameters.autolast
+   if parameters.autolast == true then
+      return toChannel("autolast is ON"), true
+   else
+      return toChannel("autolast is OFF"), true
+   end
+end
+
 function getLast ()
    return toChannel(md.getMetaData()), true
+end
+
+function onUpdateMetadata (metadata)
+   if parameters.autolast == true then
+      return toChannel(metadata), true
+   end
+   return true, true
 end
 
 function fromirc (line)
@@ -96,6 +113,10 @@ function fromirc (line)
    -- show reqs to the channel.
    if line:match("?showreqs?") then
       return showReqs(line)
+   end
+   -- auto last song toggle
+   if line:match("?autolast?") then
+      return toggleAutoLast()
    end
    -- blow away the requesticles
    if line:match("?nukereqs?") then

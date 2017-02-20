@@ -21,8 +21,8 @@ int main (int argc, char ** argv) {
   try {
   while ( true ) {
     boost::asio::io_service io_service;
-    metastream meta(io_service, argv[1], argv[2]);
     bot bot(io_service, argv[3], argv[4], "#radioxenu");
+    metastream meta(io_service, argv[1], argv[2], bot);
     io_service.run();
     std::clog << "Reconnecting!" << std::endl;
     using namespace std::literals;

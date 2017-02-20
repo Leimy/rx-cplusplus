@@ -172,3 +172,42 @@ void bot::operator() (error_code const &ec, std::size_t n) {
     return;
   }
 }
+
+void bot::onUpdateMetadata(std::string md) {
+    strand_.post(
+	[=]{
+	    // Call lua's entry
+	    lua_getglobal(ls_, "onUpdateMetadata");
+	    // with the argument
+	    lua_pushlstring(ls_, md.c_str(), md.size());
+	    // expecting bool, <result>
+	    if (lua_pcall(ls_, 1, 2, 0) != LUA_OK) { // One argument in, two out!
+		std::cerr << "ERROR:\nLSTACK: " << ls_ << "\n";
+		throw "lua call failed";
+	    }
+	    // Sanity
+	    if (!lua_isboolean(ls_, -1)) {
+		std::cerr << "ERROR:\nLSTACK: " << ls_ << "\n";
+		throw "lua: unexpected result";
+	    }
+	    // Check success - we should write the metadata
+	    if (lua_toboolean(ls_, -1)) {
+		lua_pop(ls_, 1); // cleanup bool, we're done with it
+
+		if (lua_isstring(ls_, -1)) {
+		    std::ostream out(&outbuf_);
+		    out << lua_tostring(ls_, -1) << "\r\n";
+		    boost::asio::async_write(socket_, outbuf_,
+					     [&](const boost::system::error_code& err, size_t bytes) {
+						 if (err) {
+						     std::cerr << "Failed to write metadata to channel: " << err.message() << "\n";
+						 }
+					     });
+		    lua_pop(ls_, 1); // cleanup string
+		}
+	    }
+	    else {
+		lua_pop(ls_, 2);
+	    }
+	});
+}
