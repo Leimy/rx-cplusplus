@@ -32,11 +32,15 @@ in to do restarts of the system when it doesn't work.
     Kind of gross, as it burns more megabytes than I want of private memory space.
 
 *** Metadata stream status
-    it's working, just need to expose it to Lua
+    Working.
 
 *** IRC Bot
-    Pinging/Ponging is controlled by Lua! And as I get better with Lua, I'm going to add more features! 
-    
+    Lua is now controlling.
+    1. Ping/Pong
+    2. ?lastsong?
+    3. ?autolast? (though my C++ object lifetimes are laughably bad - shared_ptr forthcoming)
+    4. Properly being serialized for activity behind an asio::strand (baby yeah!?)
+
 *** Persistant Configuration restore on restart
     Totally event driven.
     
@@ -50,8 +54,10 @@ in to do restarts of the system when it doesn't work.
      When metadata changes on the metadata stream, we run a C++ callback - injecting data into the
      configured Lua state machine - producing the behaviors we support (tweet, broadcast metadata
      to channel)
-
-
-
      
-    
+     This needs work. It's currently only partially managed by a metastate class, but I'd like to
+     make it so the metadata stream knows nothing about the bot code, but that the bot should be
+     able to subscribe to metadata updates. This would effectively wire in a C++-wrapped lua function
+     to receive the metadata and examine the state of ?autolast?
+
+
