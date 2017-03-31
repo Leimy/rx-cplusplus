@@ -1,6 +1,7 @@
 parameters = {
    nick    = "luabot",
    autolast = false,
+   autotweet = false,
    channel = "",
    reqs = {},
    reqnext = 1,
@@ -83,11 +84,30 @@ function toggleAutoLast ()
    end
 end
 
+function toggleAutoTweet ()
+  parameters.autotweet = not parameters.autotweet
+  if parameters.autotweet == true then
+     return toChannel("autotweet is ON"), true
+  else
+     return toChannel("autotweet is OFF"), true
+  end
+end
+
 function getLast ()
    return toChannel(md.getMetaData()), true
 end
 
+function tweetLast ()
+   local meta = md.getMetaData()
+   os.execute("./tweetit '" .. meta .. "'")
+   return toChannel("tweeted: " .. meta), true
+end
+
+-- Must process all metadata update actions here
 function onUpdateMetadata (metadata)
+   if parameters.autotweet == true then
+     os.execute("./tweetit '" .. metadata .. "'") 
+   end
    if parameters.autolast == true then
       return toChannel(metadata), true
    end
@@ -118,12 +138,19 @@ function fromirc (line)
    if line:match("?autolast?") then
       return toggleAutoLast()
    end
+   -- auto tweet song toggle
+   if line:match("?autotweet?") then
+      return toggleAutoTweet()
+   end
    -- blow away the requesticles
    if line:match("?nukereqs?") then
       return nukeReqs()
    end
    if line:match("?lastsong?") then
       return getLast()
+   end
+   if line:match("?tweet?") then
+      return tweetLast()
    end
    return nil, false
 end

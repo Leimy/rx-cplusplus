@@ -17,19 +17,15 @@ in to do restarts of the system when it doesn't work.
 
 ** Requirements
 
-   1. [ ] Twitter support - maybe via an external program (Lua and C++ twitter clients are hard to come by. Could write one, but yuck)
+   1. [X] Twitter support - currently using the go stack single simple driver program in botlogic.lua.
    2. [X] Metadata stream capture
-   3. [?] IRC bot - coming with Lua support for processing commands
+   3. [X] IRC bot - coming with Lua support for processing commands
    4. [ ] Persistant Configuration restore on restart - if configuration is in Lua, we can generate it, store values in tables and serialize it
 
 ** Nice feature ideas?
-   1. [ ] Write a persistent, queryable selection of the last 10 requests from the chat. DJs track what they've played!
 
 *** Twitter
-    Unless I can find a good oauth/twitter client for C++ I may just fork
-    out to Go to tweet from the rx-go repository. It's basically a duct tape
-    solution, but it would accelerate the delivery of this software greatly.
-    Kind of gross, as it burns more megabytes than I want of private memory space.
+    Just forking out to Go for now. Was thinking of writing an oauth2 library, but openssl is not thread safe?! Ew.
 
 *** Metadata stream status
     Working.
@@ -40,6 +36,8 @@ in to do restarts of the system when it doesn't work.
     2. ?lastsong?
     3. ?autolast? (though my C++ object lifetimes are laughably bad - shared_ptr forthcoming)
     4. Properly being serialized for activity behind an asio::strand (baby yeah!?)
+    5. ?tweet?
+    6. ?autotweet?
 
 *** Persistant Configuration restore on restart
     Totally event driven.
