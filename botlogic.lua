@@ -106,7 +106,9 @@ end
 -- Must process all metadata update actions here
 function onUpdateMetadata (metadata)
    if parameters.autotweet == true then
-     os.execute("./tweetit '" .. metadata .. "'") 
+     handle = io.popen("./tweetit", "w" .. "\n")
+     handle:write(metadata)
+     handle:close()
    end
    if parameters.autolast == true then
       return toChannel(metadata), true

@@ -67,7 +67,6 @@ namespace {
 
     return result;
   }
-
 }
 
 #include <iostream>

@@ -199,15 +199,15 @@ void metastream::process_metadata() {
     switch (state) {
     case START:
       if (s[pos] == '\'') {
-	state = NEXT;
+        state = NEXT;
       }
       break;
     case NEXT:
       if (s[pos] == ';') {
-	pos -= 2; //back up for trim
-	done = true;
+        pos -= 2; //back up for trim
+        done = true;
       } else {
-	state = START;
+        state = START;
       }
     }
   }
